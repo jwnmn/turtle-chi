@@ -83,7 +83,7 @@ class TaiChiPoseNode(Node):
         )
         
         self.get_logger().info("="*60)
-        self.get_logger().info("✓ Pose Estimation Node Ready!")
+        self.get_logger().info("Pose Estimation Node Ready!")
         self.get_logger().info(f"  Camera: {self.camera_topic}")
         self.get_logger().info(f"  Trigger: {self.trigger_topic}")
         self.get_logger().info(f"  Result: {self.result_topic}")
