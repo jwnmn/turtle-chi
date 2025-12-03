@@ -55,9 +55,11 @@ class TaiChiInteractionNode(Node):
             [0.0, 1.497, -0.2, 0.0],
             [0.0, 1.496, -0.407, 0.0],
         ]
+
+        # need to create a self.demo_audios = [intro.wav, downward flow.wav and upward flow.wav and ten back to center wav] on line 143
         
         self.audio_files = {
-            
+            "":""
         }
         
         self.get_logger().info("="*60)
@@ -118,11 +120,9 @@ class TaiChiInteractionNode(Node):
         self.get_logger().info("="*60)
         
         self.get_logger().info("\nStep 1: Watch the demonstration")
-        self.play_audio(self.audio_files["intro"])
         time.sleep(1.0)
         
         self.get_logger().info("\nStep 2: Robot demonstrating...")
-        self.play_audio(self.audio_files["countdown"], blocking=False)
         
         for i, pose in enumerate(self.demo_poses):
             self.get_logger().info(f"  Pose {i+1}/{len(self.demo_poses)}")
@@ -133,15 +133,17 @@ class TaiChiInteractionNode(Node):
         time.sleep(1.5)
         
         self.get_logger().info("\nStep 3: Your turn!")
-        self.play_audio(self.audio_files["user_turn"])
         time.sleep(1.0)
         
         self.get_logger().info("Follow along slowly and end with hands pushed out...")
-        self.play_audio(self.audio_files["countdown"], blocking=False)
         time.sleep(len(self.demo_poses) * 0.9 + 1)
+        for i, pose in enumerate(self.demo_poses):
+            self.get_logger().info(f"  Pose {i+1}/{len(self.demo_poses)}")
+            self.move_arm(pose, duration_sec=0.8)
+            self.play_audio(self.audio_files["AND THEN THIS IS ALSO THE Ith value in the list of strings we shoudl create for the audio files on line 59"])
+            time.sleep(0.9)
 
         self.get_logger().info("\nStep 4: Hold your hands-out pose!")
-        self.play_audio(self.audio_files["hold"])
         time.sleep(0.5)
 
         self.get_logger().info("Evaluating your pose...")
@@ -163,10 +165,10 @@ class TaiChiInteractionNode(Node):
         
         if self.latest_result == "correct":
             self.get_logger().info("SUCCESS! Your hands-out pose is correct!")
-            self.play_audio(self.audio_files["correct"])
+            self.play_audio(self.audio_files["PLAY THE GOOD JOB UR POSE WORKED"])
         elif self.latest_result == "incorrect":
             self.get_logger().info("Not quite right. Try pushing your arms out more.")
-            self.play_audio(self.audio_files["incorrect"])
+            self.play_audio(self.audio_files["PLAY THE WOW SIMPLY NO"])
         elif self.latest_result == "no_person":
             self.get_logger().warn("No person detected in frame")
         else:
