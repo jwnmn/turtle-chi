@@ -18,14 +18,12 @@ class TaiChiInteractionNode(Node):
         self.declare_parameter('arm_topic', '/arm_controller/joint_trajectory')
         self.declare_parameter('audio_dir', 'audio')
         self.declare_parameter('use_audio', True)
-        self.declare_parameter('teach_all', True) # was using this for testing each part seperately but can take it out now
         
         self.trigger_topic = self.get_parameter('trigger_topic').value
         self.result_topic = self.get_parameter('result_topic').value
         self.arm_topic = self.get_parameter('arm_topic').value
         self.audio_dir = self.get_parameter('audio_dir').value
         self.use_audio = self.get_parameter('use_audio').value
-        self.teach_all = self.get_parameter('teach_all').value
         
         self.get_logger().info("="*60)
         self.get_logger().info("Tai Chi Interaction Node Starting...")
@@ -41,72 +39,32 @@ class TaiChiInteractionNode(Node):
             10
         )
         
-        
         self.latest_result = None
         self.waiting_for_result = False
         
+        self.final_pose = [0.0, 1.496, -0.407, 0.0] # hands out and knees bent pose
         
-        self.sequence_parts = [
-            {
-                "name": "Part 1: Opening : Raise Hands",
-                "intro_text": "Let's begin with the opening. Watch my arms rise slowly.",
-                "poses": [
-                    [0.0, -0.023, 0.003, 0.0],  # Starting
-                    [0.0, 1.499, 0.209, 0.0],   # Arms up
-                    [0.0, 1.496, -0.407, 0.0],  # Arms forward 
-                ],
-                "audio": {
-                    "intro": "intro_part1.wav",
-                    "countdown": "countdown_1234.wav",
-                    "user_turn": "your_turn.wav",
-                    "hold": "hold_pose_3sec.wav",
-                    "correct": "correct_next.wav",
-                    "incorrect": "incorrect_repeat.wav"
-                }
-            },
-            {
-                "name": "Part 2: Downward Flow",
-                "intro_text": "Now we'll lower the arms with control.",
-                "poses": [
-                    [0.0, 1.496, -0.407, 0.0],  # Continue from part 1
-                    [0.0, 1.116, -0.699, 0.0],
-                    [0.0, 0.545, -0.897, 0.0],
-                    [0.0, 0.545, -1.197, 0.0], 
-                ],
-                "audio": {
-                    "intro": "intro_part2.wav",
-                    "countdown": "countdown_1234.wav",
-                    "user_turn": "your_turn.wav",
-                    "hold": "hold_pose_3sec.wav",
-                    "correct": "correct_next.wav",
-                    "incorrect": "incorrect_repeat.wav"
-                }
-            },
-            {
-                "name": "Part 3: Centering Movement",
-                "intro_text": "This brings energy to your center.",
-                "poses": [
-                    [0.0, 0.545, -1.197, 0.0], 
-                    [0.0, 0.003, -1.197, 0.0],
-                    [0.0, -0.402, -1.197, 0.599],
-                    [0.0, -0.402, -1.197, 0.0], 
-                ],
-                "audio": {
-                    "intro": "intro_part3.wav",
-                    "countdown": "countdown_1234.wav",
-                    "user_turn": "your_turn.wav",
-                    "hold": "hold_pose_3sec.wav",
-                    "correct": "correct_done.wav",
-                    "incorrect": "incorrect_repeat.wav"
-                }
-            }
+        self.demo_poses = [
+            [0.0, -0.023, 0.003, 0.0],
+            [0.0, 0.3, 0.05, 0.0],
+            [0.0, 0.6, 0.1, 0.0],
+            [0.0, 0.9, 0.15, 0.0],
+            [0.0, 1.2, 0.18, 0.0],
+            [0.0, 1.499, 0.209, 0.0],
+            [0.0, 1.498, 0.0, 0.0],
+            [0.0, 1.497, -0.2, 0.0],
+            [0.0, 1.496, -0.407, 0.0],
         ]
+        
+        self.audio_files = {
+            
+        }
         
         self.get_logger().info("="*60)
         self.get_logger().info("Interaction Node Ready!")
-        self.get_logger().info(f"  Sequence has {len(self.sequence_parts)} parts")
+        self.get_logger().info(f"  Demo has {len(self.demo_poses)} poses for smooth movement")
+        self.get_logger().info(f"  Model evaluates final 'hands out' pose only")
         self.get_logger().info(f"  Audio enabled: {self.use_audio}")
-        self.get_logger().info(f"  Teach all parts: {self.teach_all}")
         self.get_logger().info("="*60)
     
     def play_audio(self, filename, blocking=True):
@@ -153,50 +111,40 @@ class TaiChiInteractionNode(Node):
         if self.waiting_for_result:
             self.get_logger().info(f"Received result: {msg.data}")
     
-    def teach_part(self, part, part_num):
-        audio = part["audio"]
-        
+    def run_teaching_session(self):
         self.get_logger().info("\n" + "="*60)
-        self.get_logger().info(f"{part['name']}")
+        self.get_logger().info("Starting Tai Chi Teaching Session!")
+        self.get_logger().info("Target: Hands Out Pose")
         self.get_logger().info("="*60)
         
-        # step 1 -- intro
-        self.get_logger().info("\nStep 1: Robot Demonstrates")
-        self.play_audio(audio["intro"])
+        self.get_logger().info("\nStep 1: Watch the demonstration")
+        self.play_audio(self.audio_files["intro"])
         time.sleep(1.0)
         
-        # step 2 -- robot demo with countdown
-        self.get_logger().info("\nCounting through poses...")
+        self.get_logger().info("\nStep 2: Robot demonstrating...")
+        self.play_audio(self.audio_files["countdown"], blocking=False)
         
-        # starting countdown audio 
-        self.play_audio(audio["countdown"], blocking=False)
+        for i, pose in enumerate(self.demo_poses):
+            self.get_logger().info(f"  Pose {i+1}/{len(self.demo_poses)}")
+            self.move_arm(pose, duration_sec=0.8)
+            time.sleep(0.9)
+
+        self.get_logger().info("  Holding final 'hands out' pose...")
+        time.sleep(1.5)
         
-        # execute poses while audio plays
-        for i, pose in enumerate(part["poses"]):
-            self.move_arm(pose, duration_sec=1.0)
-            time.sleep(1.0)
-        
+        self.get_logger().info("\nStep 3: Your turn!")
+        self.play_audio(self.audio_files["user_turn"])
         time.sleep(1.0)
         
-        # step 3 -- user's turn
-        self.get_logger().info("\nYour Turn")
-        
-        self.play_audio(audio["user_turn"])
-        time.sleep(1.0)
-        
-        # user countdown
-        self.get_logger().info("Follow along: 1, 2, 3, 4...")
-        self.play_audio(audio["countdown"], blocking=False)
-        time.sleep(len(part["poses"]))  # One second per pose
-        
-        # step 4 -- hold final pose & capture
-        self.get_logger().info("\nEvaluating Your Final Pose")
-        
-        self.play_audio(audio["hold"])
+        self.get_logger().info("Follow along slowly and end with hands pushed out...")
+        self.play_audio(self.audio_files["countdown"], blocking=False)
+        time.sleep(len(self.demo_poses) * 0.9 + 1)
+
+        self.get_logger().info("\nStep 4: Hold your hands-out pose!")
+        self.play_audio(self.audio_files["hold"])
         time.sleep(0.5)
-        
-        # Trigger capture
-        self.get_logger().info("Triggering pose evaluation...")
+
+        self.get_logger().info("Evaluating your pose...")
         self.latest_result = None
         self.waiting_for_result = True
         
@@ -204,57 +152,31 @@ class TaiChiInteractionNode(Node):
         trigger_msg.data = True
         self.trigger_pub.publish(trigger_msg)
         
-        # Wait for result
-        self.get_logger().info("Waiting 3 seconds for evaluation...")
+        self.get_logger().info("Waiting for evaluation result...")
         wait_start = time.time()
         while (time.time() - wait_start) < 3.0:
             rclpy.spin_once(self, timeout_sec=0.1)
         
         self.waiting_for_result = False
         
-        # step 5 -- feedback
-        self.get_logger().info("\nFeedback")
+        self.get_logger().info("\nStep 5: Feedback")
         
         if self.latest_result == "correct":
-            self.get_logger().info("Your final pose is CORRECT!")
-            self.play_audio(audio["correct"])
-            success = True
+            self.get_logger().info("SUCCESS! Your hands-out pose is correct!")
+            self.play_audio(self.audio_files["correct"])
         elif self.latest_result == "incorrect":
-            self.get_logger().info("Your final pose needs work")
-            self.play_audio(audio["incorrect"])
-            success = False
+            self.get_logger().info("Not quite right. Try pushing your arms out more.")
+            self.play_audio(self.audio_files["incorrect"])
         elif self.latest_result == "no_person":
-            self.get_logger().warn("No person detected")
-            success = False
+            self.get_logger().warn("No person detected in frame")
         else:
             self.get_logger().warn(f"Unexpected result: {self.latest_result}")
-            success = False
         
         time.sleep(2.0)
         
-        return success
-    
-    def run_teaching_session(self):
-        """Run the complete teaching session"""
-        self.get_logger().info("\nStarting Tai Chi Teaching Session!\n")
-        
-        if self.teach_all:
-            for i, part in enumerate(self.sequence_parts):
-                self.get_logger().info(f"\n\n{'='*60}")
-                self.get_logger().info(f"TEACHING PART {i+1} of {len(self.sequence_parts)}")
-                self.get_logger().info(f"{'='*60}\n")
-                
-                self.teach_part(part, i+1)
-                
-                if i < len(self.sequence_parts) - 1:
-                    self.get_logger().info("\nBrief pause before next part...")
-                    time.sleep(3.0)
-            
-            self.get_logger().info("\n\n" + "="*60)
-            self.get_logger().info("Complete Sequence Finished!")
-            self.get_logger().info("="*60)
-        else:
-            pass
+        self.get_logger().info("\n" + "="*60)
+        self.get_logger().info("Session Complete!")
+        self.get_logger().info("="*60)
 
 
 def main(args=None):
