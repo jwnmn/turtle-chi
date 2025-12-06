@@ -176,7 +176,7 @@ class MLPBinaryClassifier:
 
 
 # Training wrapper
-def train_correctness_mlp(correct_json, incorrect_json, save_model="movement_1_mlp_scratch_ver3.npz"):
+def train_correctness_mlp(correct_json, incorrect_json, save_model="models/movement_4/movement_4_mlp.npz"):
     # load dataset
     correct_kpts = load_keypoints_dict(correct_json)
     incorrect_kpts = load_keypoints_dict(incorrect_json)
@@ -203,14 +203,14 @@ def train_correctness_mlp(correct_json, incorrect_json, save_model="movement_1_m
     X = (X - mean) / std
 
     # added this, inspired from that sklearn MLP classifier has this feature
-    np.savez("movement_1_scaler_scratch_ver3.npz", mean=mean, std=std)
-    print("Saved scaler → movement_1_scaler_scratch_ver3.npz")
+    np.savez("models/movement_4/movement_4_scaler.npz", mean=mean, std=std)
+    print("Saved scaler to movement_4_scaler.npz")
 
     # train mlp
     input_dim = X.shape[1]
     # increased hidden layer, lowered learning rate
     model = MLPBinaryClassifier(input_dim=input_dim, hidden_dims=(64,32), lr=5e-3)
-    model.fit(X, Y, epochs=2000) # from 500 --> 1000 --> 2000
+    model.fit(X, Y, epochs=600) # from 500 --> 1000 --> 2000
 
     # final training accuracy
     preds = model.predict(X)
@@ -227,4 +227,4 @@ def train_correctness_mlp(correct_json, incorrect_json, save_model="movement_1_m
 
 # run
 if __name__ == "__main__":
-    train_correctness_mlp("dataset/movement_1/correct.json", "dataset/movement_1/incorrect.json")
+    train_correctness_mlp("dataset/movement_4/correct.json", "dataset/incorrect.json")
